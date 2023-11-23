@@ -1,0 +1,1570 @@
+---
+title: "Status evaluation of doctoral students at D-BAUG"
+author: "ASB Board 2022/2023"
+date: "November 2023"
+output: 
+  html_document: 
+    number_sections: true
+    toc: true
+    toc_float: false
+    includes:
+      before_body: header.html
+---
+
+```{r setup, include=FALSE}
+# clean environment
+
+rm(list = ls())
+
+library(here)
+
+knitr::opts_chunk$set(eval = TRUE, warning = FALSE, echo = FALSE, message = FALSE, cache = TRUE, dev = "png", dpi = 300,  fig.width = 3.5, fig.height = 2)
+knitr::opts_knit$set(root.dir = here())
+options(dplyr.summarise.inform = FALSE)
+source(here::here("0_functions.R"))
+
+asb_blue <- "#2d65af"
+asb_green <- "#abc238"
+
+asb_palette <- c("#2d65af", "#abc238", "#242424", "#59632c", "#243b58", "#6c7c2c", "#3b4124", "#4c4c29" )
+
+```
+
+
+
+```{r load-data-once, echo=FALSE, message=FALSE, results='hide', eval=FALSE}
+#LOAD DATA
+
+#QUALTRICS
+#credentials
+qualtrics_api_credentials(
+  api_key = "caros_API_key",
+  base_url = "ivtethz.fra1.qualtrics.com"
+)
+
+#get qualtrics
+qualtrics_asb = fetch_survey(surveyID = 'SV_eUN4NxBJ8z1PZMq', force_request = TRUE, breakout_sets = FALSE, label = TRUE, convert = FALSE)
+
+save(qualtrics_asb, file = paste0(data_path, "/qualtrics_asb_raw.rda"))
+write_csv(qualtrics_asb, file = paste0(data_path, "/qualtrics_asb_raw.csv"))
+
+```
+
+
+```{r load-data}
+load(paste0(data_path, "/qualtrics_asb_raw.rda"))
+
+```
+
+```{r clean-girl-clean, eval=FALSE}
+names(qualtrics_asb)
+
+qualtrics_asb <- qualtrics_asb %>% 
+  select(-c(Status, RecipientEmail, RecipientFirstName, RecipientLastName, ExternalReference, LocationLatitude, LocationLongitude, DistributionChannel, UserLanguage)) #%>% 
+  #rename(gender = "Q3"
+  #       )
+
+var_names <- names(qualtrics_asb)
+
+var_labels <- sapply(qualtrics_asb, function(x) attr(x, "label"))
+
+codebook <- data.frame(
+  Variable = var_names,
+  Label = var_labels,
+  stringsAsFactors = FALSE,  # Ensuring character columns
+  row.names = NULL
+)
+
+print(codebook)
+
+#write_csv(codebook, file = paste0(data_path, "/codebook.csv"))
+
+```
+
+```{r clean-codebook, eval=FALSE}
+library(dataMaid)
+
+dataMaid::makeDataReport(qualtrics_asb, codebook = T, replace =T, render = F, listChecks = F)
+
+```
+
+
+# Introduction
+
+- **Objective:** The ASB Board is dedicated to understanding the backgrounds,
+interests, and concerns of D-BAUG's scientific staff. This survey will be conducted
+regularly (topics will be rotated).
+
+- **Topics:** Socioeconomic characteristics, well-being and satisfaction, general
+experience as a doctoral student, including teaching responsibilities and experiences
+with their supervisor(s).
+
+- **Data collection period:** July 17th - August 23rd, 2023
+
+## Response rate
+
+
+| Category        | Headcount in July 2023 | Completed answers received for the survey | Response rate |
+|-----------------|-----------------------:|------------------------------------------:|--------------:|
+| Doctoral students |                     244 |                                       111 |        45.5% |
+
+---
+
+<div style="padding: 10px; background-color: #f0f0f0; font-style: italic; font-size: 1.2em; border-left: 3px solid #ccc;">
+Notes: Wherever present, a dashed, vertical red line represents the median value. All questions included the option "Prefer not to say". The option was seldomly chosen and is not included in the following graphs. 
+</div>
+
+
+```{r who-finished}
+#table(qualtrics_asb$Finished)
+
+#by institute Q147
+#levels(as.factor(qualtrics_asb$Q147))
+
+qualtrics_asb <- qualtrics_asb %>% 
+  mutate(institute = case_when(Q147 == "Institute of Structural Engineering (IBK)"~ "IBK",
+                               Q147 == "Institute for Transport Planning and Systems (IVT)"~ "IVT",
+                               Q147 == "Institute for Geotechnical Engineering (IGT)" ~ "IGT",
+                               Q147 == "Institute of Construction & Infrastructure Management (IBI)"~ "IBI",
+                               Q147 == "Laboratory of Hydraulics, Hydrology and Glaciology (VAW)" ~ "VAW",
+                               Q147 == "Institute of Environmental Engineering (IfU)"~ "IFU",
+                               Q147 == "Institute of Geodesy and Photogrammetry (IGP)"~ "IGP",
+                               Q147 == "Institute for Building Materials (IfB)"~ "IFB",
+                               Q147 == "Institute of Cartography and Geoinformation (IKG)"~ "IKG",
+                               Q147 == "Institute for Spatial and Landscape Development (IRL)"~ "IRL",
+                               Q147 == "Network City and Landscape (NSL)"~ "NSL",
+                               TRUE ~ "Prefer not to say / NA"))
+
+#table(qualtrics_asb$institute)
+
+non_finishers <-qualtrics_asb %>% filter(Finished == F)
+finishers <- qualtrics_asb %>% filter(Finished == T)
+
+
+
+```
+
+# Sample composition
+
+## Age
+```{r 2B-age}
+#age distribution
+#table(finishers$Q4)
+
+# Create a factor with levels in the desired order
+finishers$Q4 <- factor(finishers$Q4, levels = c("18 - 24", "25 - 30", "31 - 35", "36 - 40", "41 or older", "Prefer not to say"))
+
+# Count the frequency of each age group
+age_data <- as.data.frame(table(finishers$Q4))
+
+# Rename the columns for better clarity
+colnames(age_data) <- c("age_group", "count")
+
+ggplot(age_data, aes(x = age_group, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 2) +
+    labs(title = " ",
+       x = "Age Group",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(age_data$count) * 1.1)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+
+#ggsave(filename = paste0(data_path, "/age.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Gender
+```{r 2B-gender}
+
+#table(finishers$Q3)
+
+#levels(as.factor(finishers$Q3))
+
+# Create a factor with levels in the desired order
+finishers$Q3 <- factor(finishers$Q3, levels = c("Man", "Non-binary / third gender", "Prefer not to say", "Woman"))
+
+# Count the frequency 
+gender_data <- as.data.frame(table(finishers$Q3))
+
+# Rename the columns for better clarity
+colnames(gender_data) <- c("gender", "count")
+
+# Plotting the data
+ggplot(gender_data, aes(x = gender, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 2) +
+    labs(title = " ",
+       x = "Gender",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(gender_data$count) * 1.2)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+
+
+#ggsave(filename = paste0(data_path, "/gender.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Citizenship
+```{r 2B-citizenship}
+
+#table(finishers$Q54)
+
+finishers <- finishers %>% 
+  mutate(
+    swiss = case_when(Q54 == "Swiss"|Q54 == "More than one citizenship (including Swiss)" ~ "Swiss",
+                      TRUE ~ "Non-Swiss")
+  )
+
+#levels(as.factor(finishers$swiss))
+
+# Create a factor with levels in the desired order
+finishers$swiss <- factor(finishers$swiss, levels = c("Non-Swiss", "Swiss"))
+
+# Count the frequency 
+swiss_data <- as.data.frame(table(finishers$swiss))
+
+# Rename the columns for better clarity
+colnames(swiss_data) <- c("swiss", "count")
+
+
+# Plotting the data
+ggplot(swiss_data, aes(x = swiss, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 2) +
+    labs(title = " ",
+       x = "Citizenship",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(gender_data$count) * 1.3)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+
+
+#ggsave(filename = paste0(data_path, "/swiss.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Salary level
+```{r 2C-salary-rates}
+
+#table(finishers$Q9)
+
+#levels(as.factor(finishers$Q9))
+
+# Create a factor with levels in the desired order
+finishers$salary <- factor(finishers$Q9, levels = c( "Standard",  "Rate 2",  "Rate 3",  "Rate 4","Rate 5"    ,    "Prefer not to say"         ))
+
+# Count the frequency 
+salary_data <- as.data.frame(table(finishers$salary))
+
+# Rename the columns for better clarity
+colnames(salary_data) <- c("level", "count")
+
+
+# Plotting the data
+ggplot(salary_data, aes(x = level, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 2) +
+    labs(title = " ",
+       x = "Salary rate",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(salary_data$count) * 1.3)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/salary.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+# Time management
+
+## Effective working hours
+
+```{r 3-working-hours}
+
+#table(finishers$Q51)
+
+#levels(as.factor(finishers$Q51))
+
+hours_data <- as.data.frame(table(finishers$Q51))
+
+# Rename the columns for better clarity
+colnames(hours_data) <- c("level", "count")
+
+
+# Plotting the data
+ggplot(hours_data, aes(x = level, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 2) +
+    labs(title = " ",
+       x = "Hours per week worked on average",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(hours_data$count) * 1.3)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+
+
+#ggsave(filename = paste0(data_path, "/hours.png"), width = 7, height = 4, dpi = 300)
+
+```
+<div style="font-style: italic; color: #555; margin-left: 20px; margin-top: 5px;">
+* 18% of doctoral students report working more than 50 hours per week!
+</div>
+
+
+***
+
+## Expected duration of doctoral studies at the beginning of the doctorate
+
+```{r 3-years-phd-thought}
+
+#table(finishers$Q49)
+
+#levels(as.factor(finishers$Q49))
+
+thought_data <- as.data.frame(table(finishers$Q49))
+
+# Rename the columns for better clarity
+colnames(thought_data) <- c("level", "count")
+
+
+# Plotting the data
+ggplot(thought_data, aes(x = level, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 2) +
+    labs(title = " ",
+       x = "Expected duration of doctoral studies - then",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(thought_data$count) * 1.3)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+
+
+#ggsave(filename = paste0(data_path, "/thought.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+
+## Expected duration of doctoral studies now
+```{r 3-years-phd-think}
+
+#table(finishers$Q50)
+
+#levels(as.factor(finishers$Q50))
+
+think_data <- as.data.frame(table(finishers$Q50))
+
+# Rename the columns for better clarity
+colnames(think_data) <- c("level", "count")
+
+
+# Plotting the data
+ggplot(think_data, aes(x = level, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 2) +
+    labs(title = " ",
+       x = "Expected duration of doctoral studies - now",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(think_data$count) * 1.3)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+```
+
+***
+
+## Difference between expected and current doctoral studies duration
+
+```{r difference}
+
+#difference
+finishers$Q50_numeric <- as.numeric(gsub(" years", "", finishers$Q50))
+finishers$Q49_numeric <- as.numeric(gsub(" years", "", finishers$Q49))
+
+finishers$difference <- finishers$Q50_numeric - finishers$Q49_numeric
+difference_freq <- table(finishers$difference)
+
+
+ggplot(as.data.frame(difference_freq), aes(x = Var1, y = Freq)) +
+   geom_col(fill = asb_blue) +
+   geom_text(aes(label = Freq), vjust = -0.5, size = 2) +
+   labs(title = " ",
+        x = "Expected duration of doctoral studies: Now - then in years",
+        y = "Count") +
+   scale_y_continuous(limits = c(0, max(difference_freq) * 1.3)) + 
+   theme_minimal() +
+   theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+   )
+
+#ggsave(filename = paste0(data_path, "/think.png"), width = 7, height = 4, dpi = 300)
+#ggsave(filename = paste0(data_path, "/difference.png"), width = 7, height = 4, dpi = 300)
+
+```
+<div style="font-style: italic; color: #555; margin-left: 20px; margin-top: 5px;">
+* A doctorate at D-BAUG takes at least one year longer than expected for about 43% of students.
+</div>
+
+
+***
+
+## Distribution of total workload
+
+```{r how-we-spend-our-time}
+#table(finishers$Q14_1)
+
+finishers_long <- finishers %>%
+     pivot_longer(cols = starts_with("Q14_"), names_to = "Variable", values_to = "Value")
+
+# Calculate the mean for each variable
+means <- finishers_long %>%
+  group_by(Variable) %>%
+  summarise(Mean = median(Value, na.rm = TRUE))
+
+# Merge means with original data
+finishers_long <- merge(finishers_long, means, by = "Variable")
+
+# Modify Variable names
+finishers_long$Variable <- dplyr::recode(finishers_long$Variable,
+                                  Q14_1 = "Doctoral thesis / project",
+                                  Q14_2 = "Research / consulting unrelated to thesis",
+                                  Q14_3 = "Teaching",
+                                  Q14_4 = "Supervision of student theses / projects",
+                                  Q14_5 = "Other tasks")
+
+ggplot(finishers_long, aes(x = Value)) +
+  geom_histogram(binwidth = 5, fill = asb_blue, color = "white") +
+  geom_vline(aes(xintercept = Mean), linetype = "dashed", color = "red", size = 0.3) +
+  facet_wrap(~ Variable,  labeller = label_wrap_gen(width = 30)) + 
+  labs(title = " ", x = "% of total workload", y = "Count") +
+  theme_minimal()+
+   theme(
+      axis.text.x = element_text(size = 7),
+      axis.text.y = element_text(size = 7),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5),
+      strip.text = element_text(size = 5)
+
+    )
+
+
+#ggsave(filename = paste0(data_path, "/how-we-spend-our-time.png"), width = 8, height = 4, dpi = 300)
+
+```
+
+***
+
+## Distribution of total workload by salary rate
+
+```{r how-we-spend-our-time_s1}
+#table(finishers$Q14_1)
+
+finishers_long <- finishers %>%
+     filter(salary != "Prefer not to say") %>% 
+     pivot_longer(cols = starts_with("Q14_"), names_to = "Variable", values_to = "Value")
+
+# Calculate the mean for each variable
+means <- finishers_long %>%
+  group_by(Variable) %>%
+  summarise(Mean = median(Value, na.rm = TRUE))
+
+# Merge means with original data
+finishers_long <- merge(finishers_long, means, by = "Variable")
+
+# Modify Variable names
+finishers_long$Variable <- dplyr::recode(finishers_long$Variable,
+                                  Q14_1 = "Doctoral thesis / project",
+                                  Q14_2 = "Research / consulting unrelated to thesis",
+                                  Q14_3 = "Teaching",
+                                  Q14_4 = "Supervision of student theses / projects",
+                                  Q14_5 = "Other tasks")
+
+asb_palette_new <- asb_palette[1:5]
+
+ggplot(finishers_long, aes(x = Value, fill = salary)) +
+    geom_density(alpha = 0.3) +
+    geom_vline(aes(xintercept = Mean), linetype = "dashed", color = "red", size = 0.3) +
+    facet_wrap(~ Variable, scales = "free_y",  labeller = label_wrap_gen(width = 30)) + 
+    labs(title = " ", x = "% of total workload", y = "Density") +
+    theme_minimal() +
+    theme(legend.position="top",
+      axis.text.x = element_text(size = 4),
+      axis.text.y = element_text(size = 4),
+      axis.title.x = element_text(size = 6),
+      axis.title.y = element_text(size = 6),
+      plot.title = element_text(size = 6, hjust = 0.5), 
+      strip.text = element_text(size = 5),
+       legend.title = element_text(size = 5),
+      legend.text = element_text(size = 5), # Adjust text size in the legend
+    legend.key.size = unit(0.2, 'cm'), # Adjust key size in the legend
+    )
+
+
+
+#ggsave(filename = paste0(data_path, "/how-we-spend-our-time_salary_freey.png"), width = 8, height = 4, dpi = 300)
+
+```
+
+***
+
+# General satisfaction: doctorate
+
+## Satisfaction with decision to pursue doctorate
+
+```{r satisfaction-doctorate}
+
+finishers$Q88_numeric <- dplyr::recode(finishers$Q88,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$Q88_numeric <- as.numeric(finishers$Q88_numeric)
+Q88_mean <- median(finishers$Q88_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = Q88_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept =Q88_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = Q88_mean , y = Inf, label = paste("Mean =", round(Q88_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "I am very satisfied with my decision to pursue a doctorate",
+       y = "Count") +
+
+    theme_minimal() +
+   theme(
+      axis.text.x = element_text(size = 7),
+      axis.text.y = element_text(size = 7),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5),
+      strip.text = element_text(size = 5)
+    )
+
+#ggsave(filename = paste0(data_path, "/satisfaction-employment.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Satisfaction with employment situation
+
+```{r satisfaction-employment1}
+#table(finishers$Q110)
+#levels(as.factor(finishers$Q110))
+
+finishers$Q110_numeric <- dplyr::recode(finishers$Q110,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$Q110_numeric <- as.numeric(finishers$Q110_numeric)
+Q110_mean <- median(finishers$Q110_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = Q110_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept =Q110_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = Q110_mean , y = Inf, label = paste("Mean =", round(Q110_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "I am very satisfied with my current employment situation",
+       y = "Count") +
+
+    theme_minimal() +
+   theme(
+      axis.text.x = element_text(size = 7),
+      axis.text.y = element_text(size = 7),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5),
+      strip.text = element_text(size = 5)
+    )
+
+#ggsave(filename = paste0(data_path, "/satisfaction-employment.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Satisfaction with work-life balance
+
+```{r satisfaction-worklifebalance1}
+#table(finishers$Q111)
+#levels(as.factor(finishers$Q111))
+
+finishers$Q111_numeric <- dplyr::recode(finishers$Q111,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$Q111_numeric <- as.numeric(finishers$Q111_numeric)
+Q111_mean <- median(finishers$Q111_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = Q111_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept =Q111_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = Q111_mean , y = Inf, label = paste("Mean =", round(Q111_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "I have a great work-life balance",
+       y = "Count") +
+
+    theme_minimal() +
+      theme(
+      axis.text.x = element_text(size = 7),
+      axis.text.y = element_text(size = 7),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5),
+      strip.text = element_text(size = 5)
+    )
+
+#ggsave(filename = paste0(data_path, "/satisfaction-worklifebalance.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Coping with pressure
+
+```{r coping-pressure}
+#table(finishers$Q107)
+#levels(as.factor(finishers$Q107))
+
+finishers$Q107_numeric <- dplyr::recode(finishers$Q107,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$Q107_numeric <- as.numeric(finishers$Q107_numeric)
+Q107_mean <- median(finishers$Q107_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = Q107_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept =Q107_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = Q107_mean , y = Inf, label = paste("Mean =", round(Q107_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "I can cope well with my work pressure",
+       y = "Count") +
+
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/coping-pressure.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Clarity of "other" tasks
+```{r 4-satisfaction-tasks}
+
+#table(finishers$Q89)
+
+#levels(as.factor(finishers$Q89))
+
+finishers$satisfactionother <- factor(finishers$Q89, levels = c( "Strongly agree" ,  "Moderately agree"  ,  "Slightly agree" ,   "Somewhere in-between/Undecided", "Slightly disagree"  ,    "Moderately disagree"  ,    "Strongly disagree"  , "Prefer not to say"    ))
+
+satisfactionother_data <- as.data.frame(table(finishers$satisfactionother))
+
+# Rename the columns for better clarity
+colnames(satisfactionother_data) <- c("level", "count")
+
+
+#ggsave(filename = paste0(data_path, "/satisfactionother.png"), width = 7, height = 4, dpi = 300)
+
+
+finishers$satisfactionother_numeric <- dplyr::recode_factor(finishers$satisfactionother,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$satisfactionother_numeric <- as.numeric(finishers$satisfactionother_numeric)
+satisfactionother_mean <- median(finishers$satisfactionother_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = satisfactionother_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept = satisfactionother_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = satisfactionother_mean , y = Inf, label = paste("Mean =", round(satisfactionother_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x = "Tasks unrelated to doctorate were clearly communicated in advance",
+       y = "Count") +
+
+    theme_minimal() +
+      theme(
+      axis.text.x = element_text(size = 7),
+      axis.text.y = element_text(size = 7),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5),
+      strip.text = element_text(size = 5)
+    )
+
+#table(finishers$Q14_3, finishers$Q51)
+
+#ggsave(filename = paste0(data_path, "/satisfactionother_num.png"), width = 8, height = 4, dpi = 300)
+
+```
+
+
+***
+# Supervision from professor
+
+## Support frequency from professor
+
+```{r 6-support-speed}
+
+#table(finishers$Q35)
+
+#levels(as.factor(finishers$Q35))
+
+finishers$support_speed <- factor(finishers$Q35, levels = c(    "Within a day"   , "Within a week" ,    "Within a month" , "In more than one month's time", "Prefer not to say"    ))
+
+support_speed_data <- as.data.frame(table(finishers$support_speed))
+
+# Rename the columns for better clarity
+colnames(support_speed_data) <- c("level", "count")
+
+
+# Plotting the data
+ggplot(support_speed_data, aes(x = level, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 3) +
+    labs(title = " ",
+       x = "How quickly can you get support from your professor?",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(support_speed_data$count) * 1.3)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+
+#ggsave(filename = paste0(data_path, "/support_speed_data.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Meeting frequency with professor
+
+```{r 6-support-freq}
+
+#table(finishers$Q36)
+
+#levels(as.factor(finishers$Q36))
+
+finishers$support_freq <- factor(finishers$Q36, levels = c(   "At least every week"        , "At least every month"   ,    "At least every six months" ,  "At least every year"    ,   "Less than once per year"  , "Never", "Prefer not to say"    ))
+
+support_freq_data <- as.data.frame(table(finishers$support_freq))
+
+# Rename the columns for better clarity
+colnames(support_freq_data) <- c("level", "count")
+
+
+# Plotting the data
+ggplot(support_freq_data, aes(x = level, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 3) +
+    labs(title = " ",
+       x = "How often do you ask your professor for support for your doctoral thesis?",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(support_freq_data$count) * 1.3)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+
+
+#ggsave(filename = paste0(data_path, "/support_freq_data.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Adequacy of supervision
+
+```{r 6-supervision-adequate}
+
+#table(finishers$Q92)
+
+#levels(as.factor(finishers$Q92))
+
+finishers$supervision_adequate <- factor(finishers$Q92, levels = c( "Strongly agree" ,  "Moderately agree"  ,  "Slightly agree" ,   "Somewhere in-between/Undecided", "Slightly disagree"  ,    "Moderately disagree"  ,    "Strongly disagree"  , "Prefer not to say"    ))
+
+supervision_adequate_data <- as.data.frame(table(finishers$supervision_adequate))
+
+# Rename the columns for better clarity
+colnames(supervision_adequate_data) <- c("level", "count")
+
+
+finishers$supervision_adequate_numeric <- dplyr::recode_factor(finishers$supervision_adequate,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$supervision_adequate_numeric <- as.numeric(finishers$supervision_adequate_numeric)
+supervision_adequate_mean <- median(finishers$supervision_adequate_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = supervision_adequate_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept = supervision_adequate_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = supervision_adequate_mean , y = Inf, label = paste("Mean =", round(supervision_adequate_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x = "I consider the supervision provided by my professor to be adequate",
+       y = "Count") +
+
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/supervision_adequate_num.png"), width = 8, height = 4, dpi = 300)
+
+```
+
+***
+## Expectation of supervision
+
+```{r 6-supervision-expect}
+
+#table(finishers$Q94)
+
+#levels(as.factor(finishers$Q94))
+
+finishers$supervision_expect <- factor(finishers$Q94, levels = c( "Strongly agree" ,  "Moderately agree"  ,  "Slightly agree" ,   "Somewhere in-between/Undecided", "Slightly disagree"  ,    "Moderately disagree"  ,    "Strongly disagree"  , "Prefer not to say"    ))
+
+supervision_expect_data <- as.data.frame(table(finishers$supervision_expect))
+
+# Rename the columns for better clarity
+colnames(supervision_expect_data) <- c("level", "count")
+
+
+finishers$supervision_expect_numeric <- dplyr::recode_factor(finishers$supervision_expect,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$supervision_expect_numeric <- as.numeric(finishers$supervision_expect_numeric)
+supervision_expect_mean <- median(finishers$supervision_expect_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = supervision_expect_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept = supervision_expect_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = supervision_expect_mean , y = Inf, label = paste("Mean =", round(supervision_expect_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =  "I expected more direct supervision from my professor",
+       y = "Count") +
+
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/supervision_expect_num.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Usefulness of feedback
+
+```{r 6-supervision-feedback}
+
+#table(finishers$Q95)
+
+#levels(as.factor(finishers$Q95))
+
+finishers$supervision_feedback <- factor(finishers$Q95, levels = c( "Strongly agree" ,  "Moderately agree"  ,  "Slightly agree" ,   "Somewhere in-between/Undecided", "Slightly disagree"  ,    "Moderately disagree"  ,    "Strongly disagree"  , "Prefer not to say"    ))
+
+supervision_feedback_data <- as.data.frame(table(finishers$supervision_feedback))
+
+# Rename the columns for better clarity
+colnames(supervision_feedback_data) <- c("level", "count")
+
+
+
+finishers$supervision_feedback_numeric <- dplyr::recode_factor(finishers$supervision_feedback,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$supervision_feedback_numeric <- as.numeric(finishers$supervision_feedback_numeric)
+supervision_feedback_mean <- median(finishers$supervision_feedback_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = supervision_feedback_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept = supervision_feedback_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = supervision_feedback_mean , y = Inf, label = paste("Mean =", round(supervision_feedback_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "I find my professor’s feedback/guidance very useful",
+       y = "Count") +
+
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/supervision_feedback_num.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Atmosphere in research group
+
+```{r 6-group-atmosphere}
+
+#table(finishers$Q96)
+
+#levels(as.factor(finishers$Q96))
+
+finishers$group_atmosphere <- factor(finishers$Q96, levels = c( "Strongly agree" ,  "Moderately agree"  ,  "Slightly agree" ,   "Somewhere in-between/Undecided", "Slightly disagree"  ,    "Moderately disagree"  ,    "Strongly disagree"  , "Prefer not to say"    ))
+
+group_atmosphere_data <- as.data.frame(table(finishers$group_atmosphere))
+
+# Rename the columns for better clarity
+colnames(group_atmosphere_data) <- c("level", "count")
+
+
+finishers$group_atmosphere_numeric <- dplyr::recode_factor(finishers$group_atmosphere,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$group_atmosphere_numeric <- as.numeric(finishers$group_atmosphere_numeric)
+group_atmosphere_mean <- median(finishers$group_atmosphere_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = group_atmosphere_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept = group_atmosphere_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = group_atmosphere_mean , y = Inf, label = paste("Mean =", round(group_atmosphere_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "My research group fosters a productive atmosphere",
+       y = "Count") +
+
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/group_atmosphere_num.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+# Supervision by day-to-day supervisor (hereafter advisor)
+
+## Advisor position
+
+```{r 6-supervisor-daytoday}
+
+#table(finishers$Q69)
+
+#levels(as.factor(finishers$Q69))
+
+supervisor_daytoday_data <- as.data.frame(table(finishers$Q69))
+
+# Rename the columns for better clarity
+colnames(supervisor_daytoday_data) <- c("level", "count")
+
+#ggsave(filename = paste0(data_path, "/supervisor_daytoday.png"), width = 7, height = 4, dpi = 300)
+
+# Recoding the levels of the variable
+finishers$Q69_recode <- dplyr::recode(finishers$Q69,
+                               `No` = "My professor",
+                               `Yes` = "Someone else",
+                               `Yes and this person is my second advisor` = "My second advisor")
+
+# Create a table of the recoded variable
+supervisor_daytoday_data <- as.data.frame(table(finishers$Q69_recode))
+
+# Rename the columns for better clarity
+colnames(supervisor_daytoday_data) <- c("level", "count")
+
+# Plotting the data
+ggplot(supervisor_daytoday_data, aes(x = level, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 3) +
+    labs(title = " ",
+       x = "Who is your advisor?",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(supervisor_daytoday_data$count) * 1.3)) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+#ggsave(filename = paste0(data_path, "/supervisor_daytoday.png"), width = 7, height = 4, dpi = 300)
+```
+
+***
+## Position of advisor (if not supervising professor)
+
+```{r supervision-table, echo=FALSE}
+library(knitr)
+library(kableExtra)
+
+# Create a data frame with the table's data
+supervision_data <- data.frame(
+  Position = c("Adjunct professor (Titularprofessor/in)", 
+               "Assistant professor, non-tenure track", 
+               "Assistant professor, tenure track", 
+               "Associate professor", "Full professor", 
+               "Post-doctoral researcher", "Privatdozent/in", 
+               "Senior scientist", "Other"),
+  Count = c(2, 2, 2, 1, 6, 19, 1, 37, 6)
+)
+
+# Create the kable table
+kable_output <- kable(supervision_data, format = "html", caption = " ") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = T)
+
+# Print the table to the document
+kable_output
+```
+
+***
+## Support frequency possibility of advisor
+
+
+```{r 6-supervisor-daytoday_freq}
+
+#table(finishers$Q67)
+
+#levels(as.factor(finishers$Q67))
+
+finishers$supervisor_daytoday_freq <- factor(finishers$Q67, levels = c( "Daily" ,"At least every week"   , "At least every month"  ,     "At least every six months", "At least every year"    ,  "Less than once per year"  ,   "Prefer not to say"      ))
+
+supervisor_daytoday_freq_data <- as.data.frame(table(finishers$supervisor_daytoday_freq))
+
+# Rename the columns for better clarity
+colnames(supervisor_daytoday_freq_data) <- c("level", "count")
+
+
+# Plotting the data
+ggplot(supervisor_daytoday_freq_data, aes(x = level, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 3) +
+    labs(title = " ",
+       x = "How often do you ask your advisor for support?",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(supervisor_daytoday_freq_data$count) * 1.3)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+
+
+#ggsave(filename = paste0(data_path, "/supervisor_daytoday_freq.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Meeting frequency with advisor
+
+
+```{r 6-supervisor-daytoday_freq-2}
+
+#table(finishers$Q67)
+
+#levels(as.factor(finishers$Q67))
+
+finishers$supervisor_daytoday_freq <- factor(finishers$Q67, levels = c( "Daily" ,"At least every week"   , "At least every month"  ,     "At least every six months", "At least every year"    ,  "Less than once per year"  ,   "Prefer not to say"      ))
+
+supervisor_daytoday_freq_data <- as.data.frame(table(finishers$supervisor_daytoday_freq))
+
+# Rename the columns for better clarity
+colnames(supervisor_daytoday_freq_data) <- c("level", "count")
+
+
+# Plotting the data
+ggplot(supervisor_daytoday_freq_data, aes(x = level, y = count)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = count), vjust = -0.5, size = 3) +
+    labs(title = " ",
+       x = "How often do you ask your advisor for support?",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(supervisor_daytoday_freq_data$count) * 1.3)) + # Increase the max y-axis limit to 110% of the max count
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+
+
+#ggsave(filename = paste0(data_path, "/supervisor_daytoday_freq.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Adequacy of supervision by advisor
+
+```{r}
+#levels(as.factor(finishers$Q112))
+
+finishers$Q112_numeric <- dplyr::recode(finishers$Q112,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$Q112_numeric <- as.numeric(finishers$Q112_numeric)
+Q112_mean <- median(finishers$Q112_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = Q112_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept = Q112_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = Q112_mean , y = Inf, label = paste("Mean =", round(Q112_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "I consider the supervision by my advisor to be adequate",
+       y = "Count") +
+
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/Q112_num.png"), width = 8, height = 4, dpi = 300)
+
+```
+
+***
+## Usefulness of feedback
+
+```{r}
+#table(finishers$Q114_numeric)
+#levels(as.factor(finishers$Q114))
+
+finishers$Q114_numeric <- dplyr::recode(finishers$Q114,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$Q114_numeric <- as.numeric(finishers$Q114_numeric)
+Q114_mean <- median(finishers$Q114_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = Q114_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept = Q114_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = Q114_mean , y = Inf, label = paste("Mean =", round(Q114_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "I find my advisor's feedback very useful",
+       y = "Count") +
+
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/Q114_num.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Subjective supervision level (advisor vs. supervisor)
+
+```{r}
+#table(finishers$Q115)
+#levels(as.factor(finishers$Q115))
+
+finishers$Q115_numeric <- dplyr::recode(finishers$Q115,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$Q115_numeric <- as.numeric(finishers$Q115_numeric)
+Q115_mean <- mean(finishers$Q115_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = Q115_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept = Q115_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = Q115_mean , y = Inf, label = paste("Mean =", round(Q115_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "I feel more “supervised” by my advisor than my professor",
+       y = "Count") +
+
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/Q115_num.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+# Teaching
+
+***
+## Reasons for teaching
+
+```{r teaching-table, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+
+# Create a data frame with your table's data
+teaching_data <- data.frame(
+  `Reason for Teaching/TA` = c(
+    "I do not teach/TA any courses", 
+    "I want to because I like teaching", 
+    "I want to because it is relevant for my CV/future career options", 
+    "I want to because teaching increases my salary", 
+    "My professor requires me to do so", 
+    "Other (please specify):"
+  ),
+  `N` = c(29, 48, 21, 8, 54, 5),
+  `%` = c(26.1, 43.2, 18.9, 7.2, 48.6, 4.5)
+)
+
+# Print the data frame as a table using kable
+kable(teaching_data, format = "html", col.names = c("Reason for Teaching/TA", "N", "%")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## Subjective teaching level
+
+```{r teaching-toomuchtime}
+#table(finishers$Q142)
+#levels(as.factor(finishers$Q142))
+
+finishers$Q142_numeric <- dplyr::recode(finishers$Q142,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$Q142_numeric <- as.numeric(finishers$Q142_numeric)
+Q142_mean <- median(finishers$Q142_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = Q142_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept =Q142_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = Q142_mean , y = Inf, label = paste("Mean =", round(Q142_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "I feel that I spend too much time on teaching",
+       y = "Count") +
+
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/teaching_toomuchtime.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Teaching level realtive to other team members
+```{r teaching-more}
+##table(finishers$Q140)
+#levels(as.factor(finishers$Q140))
+
+finishers$Q140_numeric <- dplyr::recode(finishers$Q140,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$Q140_numeric <- as.numeric(finishers$Q140_numeric)
+Q140_mean <- median(finishers$Q140_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = Q140_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept =Q140_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = Q140_mean , y = Inf, label = paste("Mean =", round(Q140_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x =   "I teach more than all other doctoral students in my group",
+       y = "Count") +
+
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text( size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+#ggsave(filename = paste0(data_path, "/teaching_more.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+
+
+
+***
+# Services at the Department
+## Doctorate rules and regulations at D-BAUG
+```{r 5-rules}
+
+#table(finishers$Q90)
+
+#levels(as.factor(finishers$Q90))
+
+finishers$rules <- factor(finishers$Q90, levels = c( "Strongly agree" ,  "Moderately agree"  ,  "Slightly agree" ,   "Somewhere in-between/Undecided", "Slightly disagree"  ,    "Moderately disagree"  ,    "Strongly disagree"  , "Prefer not to say"    ))
+
+rules_data <- as.data.frame(table(finishers$rules))
+
+# Rename the columns for better clarity
+colnames(rules_data) <- c("level", "count")
+
+#ggsave(filename = paste0(data_path, "/rules.png"), width = 7, height = 4, dpi = 300)
+
+
+
+finishers$rules_numeric <- dplyr::recode_factor(finishers$rules,
+                                                       "Strongly disagree" = 1,
+                                                       "Moderately disagree" = 2,
+                                                       "Slightly disagree" = 3,
+                                                       "Somewhere in-between/Undecided" = 4,
+                                                       "Slightly agree" = 5,
+                                                       "Moderately agree" = 6,
+                                                       "Strongly agree" = 7,
+                                                       "Prefer not to say" = NA_real_)
+finishers$rules_numeric <- as.numeric(finishers$rules_numeric)
+rules_mean <- median(finishers$rules_numeric, na.rm = TRUE)
+
+
+ggplot(finishers, aes(x = rules_numeric)) + 
+    geom_histogram(binwidth = 1, fill = asb_blue, color = "white") +
+    geom_vline(aes(xintercept = rules_mean ), color = "red", linetype = "dashed", size = 1) + 
+    annotate("text", x = rules_mean , y = Inf, label = paste("Mean =", round(rules_mean , 2)), vjust = -1) +
+    labs(title = " ",
+       x = "I am familiar with the rules and regulations for my doctorate",
+       y = "Count") +
+
+    theme_minimal() +
+      theme(
+      axis.text.x = element_text(size = 7),
+      axis.text.y = element_text(size = 7),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5),
+      strip.text = element_text(size = 5)
+    )
+
+#ggsave(filename = paste0(data_path, "/rules_num.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+## Experience with our educational developer
+```{r LSP-existence}
+#table(finishers$Q136)
+
+
+LSP_data <- as.data.frame(table(finishers$Q136))
+
+ggplot(LSP_data, aes(x = Var1, y = Freq)) + 
+    geom_col(fill = asb_blue) +
+    geom_text(aes(label = Freq), vjust = -0.5, size = 3) +
+    labs(title = " ",
+       x = "I am aware that D-BAUG has an educational developer",
+       y = "Count") +
+    scale_y_continuous(limits = c(0, max(LSP_data$Freq) * 1.3)) + 
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(size = 6),
+      axis.text.y = element_text(size = 6),
+      axis.title.x = element_text(size = 7),
+      axis.title.y = element_text(size = 8),
+      plot.title = element_text(size = 8, hjust = 0.5)
+    )
+
+
+
+#ggsave(filename = paste0(data_path, "/LSP-existence.png"), width = 7, height = 4, dpi = 300)
+
+```
+
+***
+# Varia
+
+## "Not going well"
+- Poor supervision (no concrete feedback, pressure to publish even when the work is unfinished, lack of interest from the supervisors, little guidance, communication)
+- Long leave of absences by some professors leaves doctoral students without a contact person for supervision
+- Pressure, little free time, poor work-life balance, health problems
+- Salary
+- Bureaucracy, administrative hurdles
+
+*** 
+## "Going well"
+- Good supervision (support, communication)
+- Research freedom and topic
+- Opportunity to attend summer/winter schools, conferences
+- Development of soft skills
+- Atmosphere in group and institute
+- Facilities and infrastructure 
+
+
