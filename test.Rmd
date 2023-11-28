@@ -1421,7 +1421,7 @@ ggplot(finishers, aes(x = Q142_numeric)) +
 ```
 
 ***
-## Teaching level realtive to other team members
+## Teaching level relative to other team members
 ```{r teaching-more}
 ##table(finishers$Q140)
 #levels(as.factor(finishers$Q140))
