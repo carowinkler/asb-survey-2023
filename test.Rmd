@@ -92,7 +92,8 @@ dataMaid::makeDataReport(qualtrics_asb, codebook = T, replace =T, render = F, li
 # Introduction
 
 - **Objective:** The ASB Board is dedicated to understanding the backgrounds,
-interests, and concerns of D-BAUG's scientific staff. This survey will be conducted
+interests, and concerns of the scientific staff at the department of civil, environmental, 
+and geomatic engineering (D-BAUG) at ETH Zurich. This survey will be conducted
 regularly (topics will be rotated).
 
 - **Topics:** Socioeconomic characteristics, well-being and satisfaction, general
@@ -145,7 +146,7 @@ finishers <- qualtrics_asb %>% filter(Finished == T)
 ```
 
 # Sample composition
-
+First, the background of the survey's participants are described by the following factors: age, gender, citizenship, and their salary levels as a doctoral student.
 ## Age
 ```{r 2B-age}
 #age distribution
@@ -541,7 +542,7 @@ asb_palette_new <- asb_palette[1:5]
 ggplot(finishers_long, aes(x = Value, fill = salary)) +
     geom_density(alpha = 0.3) +
     geom_vline(aes(xintercept = Mean), linetype = "dashed", color = "red", size = 0.3) +
-    facet_wrap(~ Variable, scales = "free_y",  labeller = label_wrap_gen(width = 30)) + 
+    facet_wrap(~ Variable, scales = "free_y",  labeller = label_wrap_gen(width = 25)) + 
     labs(title = " ", x = "% of total workload", y = "Density") +
     theme_minimal() +
     theme(legend.position="top",
@@ -563,6 +564,10 @@ ggplot(finishers_long, aes(x = Value, fill = salary)) +
 ```
 
 ***
+
+<div style="padding: 10px; background-color: #f0f0f0; font-style: italic; font-size: 1.2em; border-left: 3px solid #ccc;">
+Notes: In the following, if the horizontal axis is specified by numbers ranging from 1 to 7, they mean on a sclae from 1 = "Strongly disagree", 4 = "Somewher in-between/Undecided", to 7 = "Strongly agree".
+</div>
 
 # General satisfaction: doctorate
 
@@ -688,7 +693,9 @@ ggplot(finishers, aes(x = Q111_numeric)) +
 #ggsave(filename = paste0(data_path, "/satisfaction-worklifebalance.png"), width = 7, height = 4, dpi = 300)
 
 ```
-
+<div style="font-style: italic; color: #555; margin-left: 20px; margin-top: 5px;">
+* 29% of doctoral students report being strongly to slightly dissatisfied with their work-life balance.
+</div>
 ***
 ## Coping with pressure
 
@@ -729,6 +736,10 @@ ggplot(finishers, aes(x = Q107_numeric)) +
 #ggsave(filename = paste0(data_path, "/coping-pressure.png"), width = 7, height = 4, dpi = 300)
 
 ```
+
+<div style="font-style: italic; color: #555; margin-left: 20px; margin-top: 5px;">
+* About 21% of the surveyed doctoral students struggle to cope with the pressure from their doctorate.
+</div>
 
 ***
 ## Clarity of "other" tasks
@@ -970,6 +981,10 @@ ggplot(finishers, aes(x = supervision_expect_numeric)) +
 
 ```
 
+<div style="font-style: italic; color: #555; margin-left: 20px; margin-top: 5px;">
+* About 32% of doctoral students had expected more direct supervision by their supervising professor.
+</div>
+
 ***
 ## Usefulness of feedback
 
@@ -1021,6 +1036,10 @@ ggplot(finishers, aes(x = supervision_feedback_numeric)) +
 #ggsave(filename = paste0(data_path, "/supervision_feedback_num.png"), width = 7, height = 4, dpi = 300)
 
 ```
+
+<div style="font-style: italic; color: #555; margin-left: 20px; margin-top: 5px;">
+* About 74% of doctoral students report that the feedback by their professor is useful.
+</div>
 
 ***
 ## Atmosphere in research group
@@ -1121,6 +1140,10 @@ ggplot(supervisor_daytoday_data, aes(x = level, y = count)) +
     )
 #ggsave(filename = paste0(data_path, "/supervisor_daytoday.png"), width = 7, height = 4, dpi = 300)
 ```
+
+<div style="font-style: italic; color: #555; margin-left: 20px; margin-top: 5px;">
+* 32% of doctoral students consider their professor to be their day-to-day supervisor. 
+</div>
 
 ***
 ## Position of advisor (if not supervising professor)
@@ -1310,6 +1333,10 @@ ggplot(finishers, aes(x = Q114_numeric)) +
 #ggsave(filename = paste0(data_path, "/Q114_num.png"), width = 7, height = 4, dpi = 300)
 
 ```
+
+<div style="font-style: italic; color: #555; margin-left: 20px; margin-top: 5px;">
+* About 92% of the doctoral students with a different day-to-day supervisor than their professor consider the feedback from the day-to-day supervisor as useful.
+</div>
 
 ***
 ## Subjective supervision level (advisor vs. supervisor)
@@ -1567,4 +1594,14 @@ ggplot(LSP_data, aes(x = Var1, y = Freq)) +
 - Atmosphere in group and institute
 - Facilities and infrastructure 
 
-
+***
+# Summary
+The survey conducted by ASB (Association of the scientific staff at D-BAUG) during the summer of 2023 targeted towards the doctoral students at D-BAUG had a response rate of about 46%. The following are some key findings of the survey:
+- 18% of doctoral students report working more than 50 hours per week.
+- 43% of doctoral students expect their doctorate to take at least one year longer than what they initially expected.
+- 86 % of doctoral students are satisfied with their decision to pursue a doctorate.
+- 29% and 21% of doctoral students report being strongly to slightly dissatisfied with their work-life balance and struggle to cope with pressure, respectively.
+- 32% of doctoral students had expected more direct supervision by their supervising professor.
+Based on the individual comments on what has been going well and what not, the following can be summarized:
+- Some doctoral students have great experiences in terms of their doctorate, both regarding their supervision, opportunities such as attending conference or ETH's infrastructure.
+- However, also some doctoral students report difficult situations, where the supervision is poor, their professors have taken long leave of absences leaving them without any guidance and supervision or that they struggle with maintaining a health work-life balance. 
